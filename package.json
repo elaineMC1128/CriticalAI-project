@@ -1,0 +1,19 @@
+{
+  "name": "behind-the-cloud",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Behind the Cloud — an interactive critical design work on the hidden human labour of generative AI. Meilin Chen, Critical AI, 2026.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

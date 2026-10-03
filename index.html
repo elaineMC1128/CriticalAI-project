@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Behind the Cloud</title>
+  <meta name="description" content="An interactive critical design work on the hidden human labour behind generative AI. Meilin Chen, 2026." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <!-- Layer 1: WebGL — curtain installation, studio, workers, post filter -->
+  <canvas id="gl" aria-hidden="true"></canvas>
+
+  <!-- Layer 2: the fake AI product (Scene 2), shown inside the small window in Scene 1 -->
+  <div id="ui-frame">
+    <div id="ui" inert>
+      <header class="brand">Nimbus</header>
+      <main class="card" id="card">
+        <div class="bubble" id="bubble" aria-live="polite"></div>
+        <div class="orb" id="orb"><video id="orb-video" muted loop playsinline preload="auto"></video></div>
+        <p class="ask" id="ask">Ask Nimbus anything</p>
+        <div class="chips" id="chips">
+          <button type="button" class="chip">Plan a weekend in Kyoto</button>
+          <button type="button" class="chip">Create a project list</button>
+        </div>
+        <form class="composer" id="composer" autocomplete="off">
+          <input id="prompt" type="text" placeholder="Message Nimbus" aria-label="Message Nimbus" maxlength="160" />
+          <button id="send" type="submit" aria-label="Send" disabled>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </form>
+      </main>
+      <p class="foot" id="foot">Nimbus can make mistakes.</p>
+    </div>
+  </div>
+
+  <!-- Layer 3: Scene 1 / 7 hands -->
+  <canvas id="particles" aria-hidden="true"></canvas>
+  <img id="hand-green" class="hand" alt="" aria-hidden="true" />
+  <img id="hand-user" class="hand" alt="" aria-hidden="true" />
+  <button id="enter-hit" aria-label="Enter the window"></button>
+
+  <!-- Layer 4: camera viewfinder (Scene 4) -->
+  <div id="viewfinder" aria-hidden="true">
+    <svg id="vf-svg" width="100%" height="100%"></svg>
+    <div class="vf vf-rec"><span class="dot"></span>REC</div>
+    <div class="vf vf-tc" id="vf-tc">00:00:00:00</div>
+    <div class="vf vf-res">▮▮▮▯ &nbsp; 2K · 24fps</div>
+    <div class="vf vf-zoom"><div class="ruler" id="vf-ruler"></div><div class="mark"></div><div class="mm" id="vf-mm">85mm</div></div>
+    <div class="vf vf-lost" id="vf-lost">SIGNAL LOST</div>
+  </div>
+
+  <!-- Layer 5: ending credits -->
+  <div id="credits" aria-hidden="true"><div id="credits-roll"></div></div>
+  <div id="endcard" aria-hidden="true">
+    <p class="end-title">Behind the Cloud</p>
+    <p class="end-by">Meilin Chen · 2026</p>
+    <button id="replay" type="button">Replay</button>
+  </div>
+
+  <!-- Chrome -->
+  <div id="title-small">Behind the Cloud</div>
+  <div id="hint" aria-live="polite"></div>
+  <button id="sound" type="button" aria-pressed="false">Sound off</button>
+
+  <div id="loader">
+    <p class="ld-title">Behind the Cloud</p>
+    <div class="ld-bar"><div id="ld-fill"></div></div>
+    <p class="ld-pct" id="ld-pct">0%</p>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
