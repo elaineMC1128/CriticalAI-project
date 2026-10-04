@@ -77,7 +77,25 @@ export class Cloth {
     this.writePositions()
   }
 
-  get tornFraction() { return 1 - this.alive / this.totalCells }
+  // How much of the sky is really gone: a cell still "covers" the screen only if it is intact AND
+  // still roughly where it started. Pieces that were cut loose and fell away count as torn, even though
+  // their own links are unbroken (this is what used to leave people stuck in Scene 5).
+  get tornFraction() {
+    const W = COLS + 1
+    const { rect } = this
+    const maxDrift = rect.h * 0.2
+    let covering = 0
+    for (let j = 0; j < ROWS; j++) {
+      for (let i = 0; i < COLS; i++) {
+        const a = j * W + i, b = a + 1, c = a + W, d = c + 1
+        if (!(this.cl[b] && this.cu[c] && this.cl[d] && this.cu[d])) continue
+        const cx = (this.x[a] + this.x[d]) * 0.5, cy = (this.y[a] + this.y[d]) * 0.5
+        const rx = rect.x + (i + 0.5) * this.sx, ry = rect.y + (j + 0.5) * this.sy
+        if (Math.abs(cx - rx) < maxDrift && Math.abs(cy - ry) < maxDrift) covering++
+      }
+    }
+    return 1 - covering / this.totalCells
+  }
 
   rebuildIndex() {
     let c = 0
@@ -155,7 +173,7 @@ export class Cloth {
       }
       if (cutAny) {
         this.dirty = true
-        if (!this.firstTorn) { this.firstTorn = true; this.onFirstTear && this.onFirstTear() }
+        if (!this.firstTorn) { this.firstTorn = true; this.firstTearAt = performance.now(); this.onFirstTear && this.onFirstTear() }
         this.onTear && this.onTear()
       }
     }
@@ -178,9 +196,14 @@ export class Cloth {
       }
     }
 
-    if (this.dirty) {
-      this.rebuildIndex()
-      if (!this.released && this.tornFraction >= this.threshold) this.release()
+    if (this.dirty) this.rebuildIndex()
+    // check every few frames, not only when a link breaks: loose pieces keep falling afterwards
+    this.frame = (this.frame || 0) + 1
+    if (!this.released && this.firstTorn && this.frame % 6 === 0) {
+      this.lastFraction = this.tornFraction
+      if (this.lastFraction >= this.threshold) this.release()
+      // safety net: never leave anyone stuck — 25 s after the first tear the rest of the sky lets go
+      else if (performance.now() - this.firstTearAt > 25000) this.release()
     }
     this.writePositions()
   }

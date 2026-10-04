@@ -1,17 +1,8 @@
 // Scene 7 — end credits for the people who were keyed out.
 // Roles and places only — no invented names. Every figure is quoted from a source shown beneath it.
-// DRAFT: edit freely before submission.
 
-// Set to false to leave the user's own prompt out of the credits.
-export const SHOW_PROMPT_IN_CREDITS = true
-
-export function buildCredits(root, prompt) {
-  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+export function buildCredits(root) {
   const rows = (list) => list.map(([l, r]) => `<div class="cr-row"><span class="l">${l}</span><span></span><span class="r">${r}</span></div>`).join('')
-
-  const promptBlock = SHOW_PROMPT_IN_CREDITS && prompt
-    ? `<p class="cr-prompt">Your prompt<br><em>“${esc(prompt)}”</em><br>was answered by people you will never meet.</p>`
-    : ''
 
   root.innerHTML = `
     <div class="cr-block">
@@ -24,21 +15,20 @@ export function buildCredits(root, prompt) {
         ['Transcription', 'remote, by the task'],
         ['Microtask Crowdwork', 'the Global South'],
       ])}
+      <p class="cr-more">And thousands more, uncredited.</p>
     </div>
 
     <p class="cr-fact">Median earnings for these workers in developing countries: about US$2 an hour.
-      <small>Rani &amp; Dhir, International Labour Organization, 2024</small></p>
+      <small>Rani &amp; Dhir (2024), International Labour Organization</small></p>
 
     <p class="cr-fact">Many hold bachelor’s or postgraduate degrees.
-      <small>Rani &amp; Dhir, International Labour Organization, 2024</small></p>
-
-    <p class="cr-fact">Workers in Kenya who labelled toxic text to make a chatbot “safe” took home less than US$2 an hour.
-      <small>Perrigo, TIME, 2023</small></p>
+      <small>Rani &amp; Dhir (2024), International Labour Organization</small></p>
 
     <p class="cr-fact">Moderators are “routinely exposed to graphic violence, hate speech, child exploitation and other objectionable material”.
-      <small>Rani &amp; Dhir, International Labour Organization, 2024</small></p>
+      <small>Rani &amp; Dhir (2024), International Labour Organization</small></p>
 
-    ${promptBlock}
+    <p class="cr-fact">A survey of 76 data workers in Colombia, Ghana and Kenya recorded 60 incidents of psychological harm, from anxiety and panic attacks to PTSD, alongside forced unpaid overtime and withheld pay.
+      <small>Du &amp; Okolo (2025), Brookings</small></p>
 
     <div class="cr-block">
       <p class="cr-head">THIS WORK</p>
@@ -46,13 +36,11 @@ export function buildCredits(root, prompt) {
         ['Concept & design', 'Meilin Chen'],
         ['Images', 'ChatGPT (AI-generated)'],
         ['3D worker', 'Meshy (AI-generated)'],
-        ['Eye footage', 'AI-generated video'],
+        ['Eye footage', 'Kling, Doubao, Qianwen(AI-generated-video)'],
         ['Code', 'written with Claude'],
         ['Tearable cloth physics', 'after Dissimulate (MIT)'],
         ['Course', 'Critical AI · 2026'],
       ])}
     </div>
-
-    <p class="cr-last">And thousands more, uncredited.</p>
   `
 }

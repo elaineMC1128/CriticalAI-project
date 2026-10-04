@@ -41,7 +41,7 @@ const S = {
   fallT: 0,
   prompt: '',
   mouse: { x: -9999, y: -9999, nx: 0, ny: 0, sx: 0, sy: 0 },
-  caSpike: 0, glitch: 0,
+  caSpike: 0, glitch: 0, hover: 0,
   lastPointer: performance.now(),
 }
 
@@ -107,10 +107,12 @@ function hint(text, { dark = false, delay = 0 } = {}) {
   })
 }
 
+// position a hand photo; it is rotated around its fingertip so both index fingers share one line
 function placeImg(img, L, dx = 0, dy = 0) {
   img.style.width = `${L.s}px`
   img.style.height = `${L.s}px`
-  img.style.transform = `translate(${L.x + dx}px, ${L.y + dy}px)`
+  img.style.transformOrigin = `${L.ox}px ${L.oy}px`
+  img.style.transform = `translate(${L.x + dx}px, ${L.y + dy}px) rotate(${L.rot}deg)`
 }
 
 // The UI lives full-screen; in Scene 1 it is clipped to the small window and scaled to fit inside it.
@@ -228,7 +230,6 @@ function startPeep() {
   const o = { r: 48 }
   const set = () => { el.gl.style.clipPath = `circle(${o.r}px at ${W / 2}px ${H / 2}px)` }
   set()
-  sound.mix({ ambient: 0.6 })
   gsap.to(o, {
     r: Math.hypot(W, H) / 2 + 40, duration: 1.3, ease: 'power3.in', onUpdate: set,
     onComplete: () => {
@@ -276,7 +277,6 @@ function startTear() {
       vf.signalLost()
       S.vfGone = true
       gsap.fromTo(S, { glitch: 1, caSpike: 9 }, { glitch: 0, caSpike: 0, duration: reduced ? 0.01 : 1.4, ease: 'power2.out' })
-      sound.mix({ ambient: 0.25 })
     },
     onRelease: startFall,
   })
@@ -291,8 +291,7 @@ function startFall() {
   S.state = 'fall'
   document.body.classList.remove('cursor-cut')
   el.handUser.style.opacity = 0
-  sound.mix({ hum: 0.5, keys: 0.35 })
-  buildCredits(el.roll, S.prompt)
+  buildCredits(el.roll)
   const from = { p: world.camera.position.clone(), t: new THREE_Vec(0, 4.5, 0) }
   S.fallFrom = from
   S.fallT = 0
@@ -437,6 +436,8 @@ function tick(now) {
     if (S.state !== 'tear') world.setPullCamera(p)
     const pp = pullParams(p)
     P = pp
+    // projector beam: visible while the camera swings to the side, gone before the curtain faces us
+    world.beamMat.uniforms.uOpacity.value = S.state === 'pull' ? smooth(0.08, 0.3, p) * (1 - smooth(0.62, 0.84, p)) : 0
     world.curtainMat.uniforms.uWrinkle.value = pp.wrinkle
     world.curtainMat.uniforms.uPixel.value = pp.pixel
     world.sideMat.uniforms.uPixel.value = pp.pixel
@@ -470,6 +471,9 @@ function tick(now) {
     }
   }
 
+  // sound mix for this frame (see audio.js for the plan)
+  sound.setLevels(soundLevels(S.state))
+
   // post uniforms
   const kill = reduced ? 0 : 1
   u.uDistort.value = P.k * kill
@@ -492,6 +496,27 @@ function tick(now) {
   requestAnimationFrame(tick)
 }
 
+// volume of each loop per scene (0–1)
+const MIX = { ambient: 0.15, humFaint: 0.08, hum: 0.5, keys: 0.25 }
+function soundLevels(state) {
+  const H = window.innerHeight
+  if (state === 'peep') return { ambient: MIX.ambient, hum: 0, keys: 0 }
+  if (state === 'pull') {
+    const p = S.pull
+    // the ambience drifts away as the camera pulls back; the hum creeps in as the curtain comes into full view
+    return { ambient: MIX.ambient * (1 - smooth(0.05, 0.97, p)), hum: MIX.humFaint * smooth(0.8, 1, p), keys: 0 }
+  }
+  if (state === 'tear') return { ambient: 0, hum: MIX.humFaint, keys: 0 }
+  if (state === 'fall') return { ambient: 0, hum: lerp(MIX.humFaint, MIX.hum, S.fallT), keys: MIX.keys * S.fallT }
+  if (state === 'studio') {
+    const e = clamp(S.u / (H * CONFIG.endingScreens))
+    if (e <= 0) return { ambient: 0, hum: MIX.hum, keys: MIX.keys }
+    // ending: no typing; the hum is a little quieter and fades away as the user scrolls
+    return { ambient: 0, hum: MIX.hum * 0.7 * (1 - smooth(0, 1, e)), keys: 0 }
+  }
+  return { ambient: 0, hum: 0, keys: 0 }
+}
+
 let endingShown = false
 function updateEnding(e, win) {
   const W = window.innerWidth, H = window.innerHeight
@@ -500,7 +525,6 @@ function updateEnding(e, win) {
     endingShown = true
     el.credits.style.visibility = 'visible'
     el.endcard.style.visibility = 'visible'
-    sound.mix({ hum: 0.3, keys: 0.18 })
   }
   // hands reach in from the corners, leave with the window, then reach back in at the very end
   const reach = smooth(0.16, 0.3, e)
@@ -530,7 +554,6 @@ function hideEnding() {
   el.credits.style.visibility = 'hidden'
   el.endcard.style.visibility = 'hidden'
   el.endcard.style.opacity = 0
-  sound.mix({ hum: 0.5, keys: 0.35 })
 }
 
 boot().catch((err) => {

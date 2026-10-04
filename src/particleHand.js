@@ -48,9 +48,13 @@ export class ParticleHand {
     const L = layout(W, H).data
     const k = L.s / 1254
     this.size = Math.max(1.1, STEP * k * 0.62)
+    // rotate around the fingertip, the same way the hand photos are rotated
+    const r = (L.rot * Math.PI) / 180, c = Math.cos(r), sn = Math.sin(r)
+    const tx = L.x + L.ox, ty = L.y + L.oy
     for (let i = 0; i < this.count; i++) {
-      this.home[i * 2] = L.x + this.src[i * 2] * k
-      this.home[i * 2 + 1] = L.y + this.src[i * 2 + 1] * k
+      const px = this.src[i * 2] * k - L.ox, py = this.src[i * 2 + 1] * k - L.oy
+      this.home[i * 2] = tx + px * c - py * sn
+      this.home[i * 2 + 1] = ty + px * sn + py * c
     }
     if (this.mode === 'idle') this.pos.set(this.home)
   }

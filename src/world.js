@@ -151,7 +151,7 @@ export class World {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
 
     this.scene = new THREE.Scene()
-    this.scene.fog = new THREE.FogExp2(0x000000, 0.012)
+    this.scene.fog = new THREE.FogExp2(0x050506, 0.007)
     this.camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 300)
 
     this.skyTex = new THREE.VideoTexture(videos.sky)
@@ -220,40 +220,139 @@ export class World {
   }
 
   buildWarehouse() {
+    // a dim but readable warehouse: the visitor should be able to make out a film camera on a tripod
+    // pointed at the sky, and a studio light lighting it — the sky is a set, and it is being filmed.
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(220, 220),
-      new THREE.MeshStandardMaterial({ color: 0x0d0d0e, roughness: 0.6, metalness: 0.0 }),
+      new THREE.MeshStandardMaterial({ color: 0x2b2c30, roughness: 0.82, metalness: 0.05 }),
     )
     floor.rotation.x = -Math.PI / 2
     floor.position.y = -0.01
     this.scene.add(floor)
 
-    const dark = new THREE.MeshStandardMaterial({ color: 0x1b1b1d, roughness: 0.7, metalness: 0.4 })
+    const metal = new THREE.MeshStandardMaterial({ color: 0x55575c, roughness: 0.45, metalness: 0.6 })
+    const body = new THREE.MeshStandardMaterial({ color: 0x3c3e44, roughness: 0.4, metalness: 0.5 })
+    const glass = new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 0.08, metalness: 0.9 })
     const g = new THREE.Group()
-    // light stands either side of the installation
-    for (const sx of [-1, 1]) {
-      const stand = new THREE.Group()
+
+    const tripod = (height) => {
+      const t = new THREE.Group()
       for (let i = 0; i < 3; i++) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.2), dark)
-        const a = (i / 3) * Math.PI * 2
-        leg.position.set(Math.cos(a) * 0.45, 1.0, Math.sin(a) * 0.45)
-        leg.lookAt(0, 2.2, 0)
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, height * 1.05), metal)
+        const ang = (i / 3) * Math.PI * 2 + 0.5
+        leg.position.set(Math.cos(ang) * 0.55, height / 2, Math.sin(ang) * 0.55)
+        leg.lookAt(0, height, 0)
         leg.rotateX(Math.PI / 2)
-        stand.add(leg)
+        t.add(leg)
       }
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 4.2), dark)
-      pole.position.y = 3.6
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.6), dark)
-      head.position.set(0, 5.8, 0)
-      head.rotation.x = -0.35
-      stand.add(pole, head)
-      stand.position.set(sx * 11.5, 0, 5)
-      stand.rotation.y = sx * 0.4
-      g.add(stand)
+      return t
     }
+
+    // --- projector hanging from the ceiling truss, throwing the sky onto the curtain ---
+    // High and central: it shows when the camera swings to the side, and is above the frame once the
+    // curtain faces the viewer. Its beam is visible mid pull-back and fades before the tear (main.js).
+    const proj = new THREE.Group()
+    const shell = new THREE.MeshStandardMaterial({ color: 0x8b8e94, roughness: 0.5, metalness: 0.35 })
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.6), metal)
+    rod.position.y = 1.95
+    const mount = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.5), metal)
+    mount.position.y = 0.2
+    const pbody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 1.4), shell)
+    const vents = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.3, 0.6), body)
+    vents.position.set(0, 0, 0.25)
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.4, 32), body)
+    barrel.rotation.x = Math.PI / 2
+    barrel.position.set(-0.35, 0, -0.85)
+    const lensFace = new THREE.Mesh(new THREE.CircleGeometry(0.19, 32), new THREE.MeshBasicMaterial({ color: 0xeaf4ff }))
+    lensFace.position.set(-0.35, 0, -1.06)
+    lensFace.rotation.y = Math.PI
+    proj.add(rod, mount, pbody, vents, barrel, lensFace)
+    const PROJ = new THREE.Vector3(0, 8.8, 10)
+    proj.position.copy(PROJ)
+    proj.lookAt(0.35, BOX.h / 2, 0) // aim the lens at the middle of the curtain
+    proj.rotateY(Math.PI)
+    g.add(proj)
+    // a soft light just under it so the body reads against the dark ceiling
+    const projLight = new THREE.PointLight(0xdfe8ff, 10, 6, 1.5)
+    projLight.position.set(0, 7.2, 11.2)
+    g.add(projLight)
+
+    // the beam: a thin pyramid of light from the lens to the curtain's four corners
+    proj.updateMatrixWorld(true)
+    const apex = new THREE.Vector3(-0.35, 0, -1.08).applyMatrix4(proj.matrixWorld)
+    const { w: bw, h: bh } = BOX
+    const corners = [[-bw / 2, bh], [bw / 2, bh], [bw / 2, 0], [-bw / 2, 0]].map(([x, y]) => new THREE.Vector3(x, y, 0.06))
+    const pos = [], tt = []
+    for (let i = 0; i < 4; i++) {
+      const c1 = corners[i], c2 = corners[(i + 1) % 4]
+      pos.push(apex.x, apex.y, apex.z, c1.x, c1.y, c1.z, c2.x, c2.y, c2.z)
+      tt.push(0, 1, 1)
+    }
+    const beamGeo = new THREE.BufferGeometry()
+    beamGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    beamGeo.setAttribute('aT', new THREE.Float32BufferAttribute(tt, 1))
+    beamGeo.computeVertexNormals()
+    this.beamMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uOpacity: { value: 0 }, uTime: { value: 0 } },
+      vertexShader: `
+        attribute float aT;
+        varying float vT;
+        varying vec3 vW;
+        varying vec3 vN;
+        void main() {
+          vT = aT;
+          vW = (modelMatrix * vec4(position, 1.0)).xyz;
+          vN = normalize(mat3(modelMatrix) * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        uniform float uOpacity, uTime;
+        varying float vT;
+        varying vec3 vW;
+        varying vec3 vN;
+        void main() {
+          // light in air: brightest at the lens, thinning out towards the curtain;
+          // faint where you look straight through a side, stronger where you see it edge-on (like a real beam)
+          float a = mix(0.5, 0.02, pow(smoothstep(0.0, 1.0, vT), 0.45));
+          vec3 v = normalize(cameraPosition - vW);
+          float edge = 1.0 - abs(dot(normalize(vN), v));
+          a *= 0.25 + 0.75 * edge * edge;
+          float dust = 0.9 + 0.1 * sin(vW.x * 3.1 + uTime * 0.7) * sin(vW.y * 2.7 - uTime * 0.5);
+          gl_FragColor = vec4(vec3(0.82, 0.9, 1.0) * a * dust * uOpacity, 1.0);
+        }`,
+    })
+    this.beam = new THREE.Mesh(beamGeo, this.beamMat)
+    this.beam.frustumCulled = false
+    this.beam.renderOrder = 2
+    g.add(this.beam)
+
+    // --- studio light on the other side, washing the floor in front of the curtain ---
+    const lamp = new THREE.Group()
+    lamp.add(tripod(2.6))
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 3.2), metal)
+    pole.position.y = 4.0
+    const hd = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 0.7), body)
+    hd.position.set(0, 5.7, 0)
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.65), new THREE.MeshBasicMaterial({ color: 0xfff6e8 }))
+    face.position.set(0, 5.7, -0.36)
+    face.rotation.y = Math.PI
+    lamp.add(pole, hd, face)
+    lamp.position.set(-11, 0, 6)
+    lamp.lookAt(0, 0, 0)
+    lamp.rotateY(Math.PI)
+    g.add(lamp)
+    const spot = new THREE.SpotLight(0xfff3e0, 120, 40, 0.65, 0.6, 1.4)
+    spot.position.set(-11, 5.7, 6)
+    spot.target.position.set(3, 0, 5)
+    g.add(spot, spot.target)
+
     // ceiling grid of trusses above everything
     for (let i = -3; i <= 3; i++) {
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(60, 0.18, 0.18), dark)
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(60, 0.18, 0.18), metal)
       bar.position.set(0, 13, i * 4)
       g.add(bar)
     }
@@ -434,14 +533,15 @@ export class World {
     mat.roughness = 0.9
     mat.metalness = 0
 
-    // find the screen's front surface by casting a ray at the middle of the monitor
-    geo.computeBoundingBox()
-    const probe = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }))
-    probe.updateMatrixWorld()
-    const ray = new THREE.Raycaster(new THREE.Vector3(-0.045, 0.81, 2), new THREE.Vector3(0, 0, -1))
-    const hit = ray.intersectObject(probe)[0]
-    const screenZ = (hit ? hit.point.z : 0.2) + 0.006
-    this.screenZ = screenZ
+    // The monitor's screen in the model is turned ~14° (the reference image showed it at a slight angle).
+    // Its surface was measured by ray-casting the model and fitting a plane to the dark screen area:
+    //   z = 0.256·x + 0.042·y + 0.183, spanning x −0.155…0.105, y 0.70…0.905 (model units).
+    // The video plane is laid onto that surface, 13 mm in front (the CRT glass bulges ~1 cm in the middle),
+    // so it never slides or sinks into the glass.
+    const n = new THREE.Vector3(-0.2559, -0.0418, 1).normalize()
+    const sc = { x: -0.025, y: 0.8025 }
+    const screenCenter = new THREE.Vector3(sc.x, sc.y, 0.2559 * sc.x + 0.0418 * sc.y + 0.1828).addScaledVector(n, 0.013)
+    const screenQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n)
 
     const eyeTex = this.videos.eyes.map((v) => {
       const t = new THREE.VideoTexture(v)
@@ -449,7 +549,7 @@ export class World {
       return t
     })
     const eyeMats = eyeTex.map((t) => new THREE.MeshBasicMaterial({ map: t, color: new THREE.Color(1.0, 1.0, 1.0) }))
-    const screenGeo = new THREE.PlaneGeometry(0.255, 0.19)
+    const screenGeo = new THREE.PlaneGeometry(0.272, 0.206)
 
     this.workers = []
     const rows = [
@@ -469,7 +569,8 @@ export class World {
         body.position.y = 0.95 * s
         body.scale.setScalar(s)
         const scr = new THREE.Mesh(screenGeo, eyeMats[idx % eyeMats.length])
-        scr.position.set(-0.045, 0.81, screenZ)
+        scr.position.copy(screenCenter)
+        scr.quaternion.copy(screenQuat)
         body.add(scr)
         g.add(body)
         g.position.set(x, 0, z)
@@ -580,6 +681,7 @@ export class World {
       this.bulbs.setColorAt(i, c)
       this.bulbs.instanceColor.needsUpdate = true
     }
+    if (this.beamMat) this.beamMat.uniforms.uTime.value = t
     // workers breathe and sway slightly, and now and then lower their heads
     if (this.workers) {
       for (const wk of this.workers) {

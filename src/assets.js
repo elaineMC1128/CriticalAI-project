@@ -14,10 +14,10 @@ export const FILES = {
   eyes2: 'eyes_02.mp4',
   eyes3: 'eyes_03.mp4',
   worker: 'worker.glb',
-  sAmbient: 'ambient.mp3',
-  sHum: 'hum.mp3',
+  sAmbient: 'ambient.wav',
+  sHum: 'hum.wav',
   sTear: 'tear.mp3',
-  sKeys: 'keyboard.mp3',
+  sKeys: 'keyboard.wav',
 }
 
 async function fetchWithProgress(url, onBytes) {
