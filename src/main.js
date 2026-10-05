@@ -31,7 +31,7 @@ const CONFIG = {
   pullScreens: 3.5,     // how much scrolling the pull-back takes (in screen heights)
   zoomScreens: 2,       // scrolling up in the studio to reach the closest view
   endingScreens: 8,     // scrolling for the whole ending + credits
-  tearThreshold: 0.3,   // share of the sky that must be torn before it falls
+  tearThreshold: 0.55,   // share of the sky that must be torn before it falls
 }
 
 const S = {
@@ -296,7 +296,7 @@ function startFall() {
   S.fallFrom = from
   S.fallT = 0
   gsap.to(S, {
-    fallT: 1, duration: 2.6, delay: 0.6, ease: 'power2.inOut',
+    fallT: 1, duration: 2.6, delay: 1.2, ease: 'power2.inOut',
     onComplete: () => {
       if (cloth) { world.overlay.remove(cloth.mesh); cloth = null }
       S.state = 'studio'

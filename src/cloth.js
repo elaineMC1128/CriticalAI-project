@@ -12,6 +12,7 @@ import { clothVert, skyFrag } from './world.js'
 const COLS = 64
 const ROWS = 36
 const ACCURACY = 4
+const SAFETY_S = 45 // if someone keeps hesitating, the sky falls by itself this long after the first tear
 
 export class Cloth {
   constructor(rect, { texture, wrinkle = 0.5, pixel = 1, threshold = 0.3, onTear, onFirstTear, onRelease }) {
@@ -83,7 +84,7 @@ export class Cloth {
   get tornFraction() {
     const W = COLS + 1
     const { rect } = this
-    const maxDrift = rect.h * 0.2
+    const maxDrift = rect.h * 0.45 // a piece swinging around is not gone; one that has dropped this far is
     let covering = 0
     for (let j = 0; j < ROWS; j++) {
       for (let i = 0; i < COLS; i++) {
@@ -167,13 +168,13 @@ export class Cloth {
           if (this.cutPoint(k)) cutAny = true
         } else if (d2 < infl * infl && !pinned[k]) {
           // tug the cloth along with the pointer
-          px[k] -= sdx * 0.25
-          py[k] -= sdy * 0.25
+          px[k] -= sdx * 0.12
+          py[k] -= sdy * 0.12
         }
       }
       if (cutAny) {
         this.dirty = true
-        if (!this.firstTorn) { this.firstTorn = true; this.firstTearAt = performance.now(); this.onFirstTear && this.onFirstTear() }
+        if (!this.firstTorn) { this.firstTorn = true; this.firstTearAt = this.time; this.onFirstTear && this.onFirstTear() }
         this.onTear && this.onTear()
       }
     }
@@ -196,14 +197,24 @@ export class Cloth {
       }
     }
 
+    // after release the top edge lets go point by point and gravity builds up, so the sky peels off instead of dropping at once
+    if (this.released) {
+      this.releaseT += dt
+      this.gravity = Math.min(2600, 500 + this.releaseT * 1800)
+      const due = Math.floor(Math.min(1, this.releaseT / 0.9) * this.unpinOrder.length)
+      while (this.unpinned < due) pinned[this.unpinOrder[this.unpinned++]] = 0
+    }
+
     if (this.dirty) this.rebuildIndex()
     // check every few frames, not only when a link breaks: loose pieces keep falling afterwards
     this.frame = (this.frame || 0) + 1
     if (!this.released && this.firstTorn && this.frame % 6 === 0) {
       this.lastFraction = this.tornFraction
-      if (this.lastFraction >= this.threshold) this.release()
-      // safety net: never leave anyone stuck — 25 s after the first tear the rest of the sky lets go
-      else if (performance.now() - this.firstTearAt > 25000) this.release()
+      // the torn share has to stay above the threshold for about a second, so a big swing doesn't count
+      this.overSince = this.lastFraction >= this.threshold ? (this.overSince ?? this.time) : null
+      if (this.overSince != null && this.time - this.overSince > 1) this.release()
+      // safety net: never leave anyone stuck — 45 s after the first tear the rest of the sky lets go
+      else if (this.time - this.firstTearAt > SAFETY_S) this.release()
     }
     this.writePositions()
   }
@@ -228,8 +239,14 @@ export class Cloth {
 
   release() {
     this.released = true
-    this.pinned.fill(0)
-    this.gravity = 2600
+    this.releaseT = 0
+    this.unpinned = 0
+    // unpin the top row from the middle outwards, slightly shuffled
+    const order = []
+    for (let i = 0; i <= COLS; i++) order.push(i)
+    order.sort((a, b) => Math.abs(a - COLS / 2) + Math.random() * 8 - (Math.abs(b - COLS / 2) + Math.random() * 8))
+    this.unpinOrder = order
+    this.gravity = 500
     this.onRelease && this.onRelease()
   }
 
